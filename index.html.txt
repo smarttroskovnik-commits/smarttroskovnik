@@ -1,0 +1,603 @@
+html = '''<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartTroškovnik — Mirenje podataka</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--surface2:#f0efe9;--border:#e0ddd5;
+  --text:#1a1917;--text2:#6b6860;--text3:#9b9890;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-text:#042C53;
+  --green:#0F6E56;--green-bg:#E1F5EE;--green-text:#04342C;
+  --amber:#854F0B;--amber-bg:#FAEEDA;--amber-text:#412402;
+  --red:#A32D2D;--red-bg:#FCEBEB;--red-text:#501313;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.header-meta{display:flex;align-items:center;gap:12px}
+.badge{font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text2)}
+.badge.info{background:var(--blue-bg);color:var(--blue-text);border-color:#B5D4F4}
+
+/* MAIN LAYOUT */
+.app-body{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 57px)}
+
+/* LEFT SIDEBAR — input + queue */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-section{padding:16px;border-bottom:1px solid var(--border)}
+.sidebar-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:8px}
+.search-wrap{position:relative}
+.search-input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);font-size:13px;color:var(--text);outline:none;transition:border .15s}
+.search-input:focus{border-color:var(--blue);background:#fff}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
+.add-btn{width:100%;margin-top:8px;padding:8px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.add-btn:hover{opacity:.85}
+
+/* Queue list */
+.queue-list{flex:1;overflow-y:auto;padding:8px}
+.queue-empty{text-align:center;padding:32px 16px;color:var(--text3);font-size:13px}
+.queue-item{padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid transparent;margin-bottom:4px;transition:all .1s;position:relative}
+.queue-item:hover{background:var(--surface2)}
+.queue-item.active{background:var(--blue-bg);border-color:#B5D4F4}
+.queue-item.done{opacity:.55}
+.qi-code{font-size:10px;font-family:monospace;color:var(--text3);margin-bottom:2px}
+.qi-name{font-size:12px;color:var(--text);line-height:1.4;margin-bottom:4px}
+.qi-meta{display:flex;align-items:center;gap:6px}
+.qi-status{font-size:10px;padding:2px 6px;border-radius:20px}
+.qi-status.pending{background:var(--amber-bg);color:var(--amber-text)}
+.qi-status.done{background:var(--green-bg);color:var(--green-text)}
+.qi-status.skip{background:var(--surface2);color:var(--text2)}
+.qi-conf{font-size:11px;color:var(--text2)}
+
+/* RIGHT PANEL — reconciliation */
+.main-panel{padding:24px;overflow-y:auto}
+.panel-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.panel-title{font-size:20px;font-weight:600;margin-bottom:2px}
+.panel-sub{font-size:13px;color:var(--text2)}
+.progress-row{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.progress-track{flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .5s}
+.progress-text{font-size:12px;color:var(--text2);white-space:nowrap}
+
+/* RECONCILE GRID */
+.reconcile-grid{display:grid;grid-template-columns:1fr 32px 1fr;gap:0;align-items:start;margin-bottom:20px}
+.rec-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.rec-panel.troskovnik{border-left:3px solid var(--blue)}
+.rec-panel.cjenik{border-left:3px solid var(--green)}
+.rec-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.item-code{font-size:10px;font-family:monospace;color:var(--text3);margin-bottom:4px}
+.item-name{font-size:14px;font-weight:500;line-height:1.5;margin-bottom:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text2)}
+
+/* Connector */
+.connector{display:flex;align-items:center;justify-content:center;padding-top:50px;color:var(--text3);font-size:20px}
+
+/* Match panel content */
+.match-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}
+.conf-ring{flex-shrink:0;text-align:center}
+.conf-ring svg{display:block}
+.conf-pct{font-size:15px;font-weight:600;color:var(--text)}
+.conf-sub{font-size:10px;color:var(--text2)}
+.match-info{flex:1;min-width:0}
+.match-name{font-size:14px;font-weight:500;line-height:1.5;margin-bottom:8px}
+.match-price{display:flex;align-items:baseline;gap:4px;margin-bottom:4px}
+.price-amt{font-size:22px;font-weight:600}
+.price-unit{font-size:12px;color:var(--text2)}
+
+.conf-bar-wrap{height:3px;background:var(--surface2);border-radius:2px;margin-bottom:4px;overflow:hidden}
+.conf-bar{height:100%;border-radius:2px;transition:width .6s}
+.conf-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:12px}
+.conf-label{color:var(--text2)}
+
+.diff-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.diff-tag{font-size:11px;padding:3px 7px;border-radius:20px;display:flex;align-items:center;gap:3px}
+.tag-ok{background:var(--green-bg);color:var(--green-text)}
+.tag-warn{background:var(--amber-bg);color:var(--amber-text)}
+
+.action-row{display:flex;gap:8px;flex-direction:column}
+.btn{padding:9px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;gap:6px;transition:background .12s;width:100%}
+.btn:hover{background:var(--surface2)}
+.btn.accept{background:var(--green-bg);border-color:#5DCAA5;color:var(--green-text)}
+.btn.accept:hover{background:#9FE1CB}
+.btn.alt{border-style:dashed}
+
+/* Alternatives panel */
+.alts-panel{margin-top:12px;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;display:none}
+.alts-panel.open{display:block}
+.alts-header{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:8px}
+.alt-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:all .1s;border-radius:4px}
+.alt-item:last-child{border-bottom:none}
+.alt-item:hover{background:var(--surface);padding-left:6px}
+.alt-score{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.alt-info{flex:1;min-width:0}
+.alt-name{font-size:12px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.alt-price{font-size:13px;font-weight:600;flex-shrink:0}
+.no-match{text-align:center;padding:32px 16px;color:var(--text2)}
+
+/* Nav */
+.nav-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px}
+.nav-info{font-size:12px;color:var(--text2)}
+.nav-btns{display:flex;gap:8px}
+.nav-btn{padding:7px 14px;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:4px;transition:background .1s}
+.nav-btn:hover{background:var(--surface2)}
+.nav-btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.nav-btn.primary:hover{opacity:.85}
+.nav-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Empty state */
+.empty-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;text-align:center;color:var(--text2)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+
+/* Stats bar */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px}
+.stat-val{font-size:20px;font-weight:600;margin-bottom:2px}
+.stat-label{font-size:11px;color:var(--text2)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:var(--radius-sm);font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Accepted overlay */
+.match-wrap{position:relative}
+.accepted-ov{position:absolute;inset:0;background:rgba(225,245,238,.93);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+.accepted-ov.show{opacity:1;pointer-events:all}
+.accepted-ov .ov-icon{font-size:36px}
+.accepted-ov .ov-text{font-size:15px;font-weight:600;color:var(--green-text)}
+
+/* Input modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);padding:24px;width:480px;max-width:90vw}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);font-size:13px;color:var(--text);outline:none;transition:border .15s;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);background:#fff}
+.field textarea{resize:vertical;min-height:70px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal-actions button{padding:8px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:13px;cursor:pointer;background:transparent}
+.modal-actions .confirm{background:var(--blue);color:#fff;border-color:var(--blue)}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-icon">ST</div>
+    SmartTroškovnik
+  </div>
+  <div class="header-meta">
+    <span class="badge">Bilten III. 2024.</span>
+    <span class="badge info" id="dbCount">— stavki u bazi</span>
+  </div>
+</header>
+
+<div class="app-body">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Nova stavka troškovnika</div>
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input class="search-input" id="newItemInput" type="text" 
+          placeholder="Upišite opis stavke..." 
+          onkeydown="if(event.key==='Enter')addItem()" />
+      </div>
+      <button class="add-btn" onclick="addItem()">+ Dodaj i usporedi</button>
+    </div>
+    <div class="sidebar-section" style="padding:12px 16px">
+      <div class="sidebar-label">Red čekanja <span id="queueCount" style="font-weight:400;color:var(--text3)"></span></div>
+    </div>
+    <div class="queue-list" id="queueList">
+      <div class="queue-empty">Dodajte stavke iz troškovnika radi usporedbe s cjenikom.</div>
+    </div>
+  </aside>
+
+  <!-- Main panel -->
+  <main class="main-panel">
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-val" id="statTotal">0</div><div class="stat-label">Stavki ukupno</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--green)" id="statDone">0</div><div class="stat-label">Prihvaćeno</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--amber)" id="statPend">0</div><div class="stat-label">Na čekanju</div></div>
+      <div class="stat-card"><div class="stat-val" id="statAvgConf">—</div><div class="stat-label">Prosj. sigurnost</div></div>
+    </div>
+
+    <!-- Panel header -->
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Mirenje podataka</div>
+        <div class="panel-sub">Semantičko podudaranje stavki troškovnika s cjenikom</div>
+      </div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="progress-text" id="progressText">0 / 0</div>
+    </div>
+
+    <div id="emptyState" class="empty-panel">
+      <div class="empty-icon">&#128196;</div>
+      <div style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:6px">Nema stavki za mirenje</div>
+      <div>Dodajte stavku iz troškovnika u bočnom izborniku</div>
+    </div>
+
+    <div id="reconcileView" style="display:none">
+      <!-- Reconcile grid -->
+      <div class="reconcile-grid">
+        <div class="rec-panel troskovnik">
+          <div class="rec-label">&#128196; Stavka troškovnika</div>
+          <div class="item-code" id="rItemCode"></div>
+          <div class="item-name" id="rItemName"></div>
+          <div class="chips" id="rItemChips"></div>
+        </div>
+        <div class="connector">&#8652;</div>
+        <div class="match-wrap">
+          <div class="rec-panel cjenik" id="rMatchPanel">
+            <div class="rec-label">&#127991; AI prijedlog iz cjenika</div>
+            <div id="matchContent"></div>
+          </div>
+          <div class="accepted-ov" id="acceptedOv">
+            <div class="ov-icon">&#9989;</div>
+            <div class="ov-text">Prihvaćeno!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="nav-bar">
+        <div class="nav-info" id="navInfo"></div>
+        <div class="nav-btns">
+          <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">&#8592; Prethodna</button>
+          <button class="nav-btn" onclick="skipItem()">Preskoči &#8594;</button>
+          <button class="nav-btn primary" onclick="navigate(1)">Sljedeća &#8594;</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CJENIK DATABASE ───────────────────────────────────────────────
+const CJENIK = ''' + compact + ''';
+
+document.getElementById('dbCount').textContent = CJENIK.length.toLocaleString('hr') + ' stavki u bazi';
+
+// ─── NORMALIZATION ─────────────────────────────────────────────────
+const DIAKRITICI = {č:'c',ć:'c',š:'s',ž:'z',đ:'d',Č:'c',Ć:'c',Š:'s',Ž:'z',Đ:'d'};
+function norm(s) {
+  if (!s) return '';
+  return s.toLowerCase()
+    .replace(/[čćšžđČĆŠŽĐ]/g, c => DIAKRITICI[c]||c)
+    .replace(/[^a-z0-9\\s]/g,' ')
+    .replace(/\\s+/g,' ').trim();
+}
+
+// ─── DIMENSION EXTRACTION ──────────────────────────────────────────
+function extractDims(s) {
+  const dims = [];
+  const re = /(\\d+(?:[.,]\\d+)?)\\s*(mm|cm|m(?!³|²|3|2)|m²|m³|m2|m3|kg|t(?!\\w))/gi;
+  let m;
+  while((m=re.exec(s))!==null) {
+    dims.push({v:parseFloat(m[1].replace(',','.')), u:m[2].toLowerCase()});
+  }
+  return dims;
+}
+
+function dimScore(d1,d2) {
+  if(!d1.length||!d2.length) return 0.5;
+  let hits=0,total=0;
+  for(const a of d1) for(const b of d2) {
+    if(a.u===b.u){total++;if(Math.abs(a.v-b.v)/Math.max(a.v,0.001)<0.06)hits++;}
+  }
+  return total===0?0.5:hits/total;
+}
+
+// ─── JACCARD ON TOKENS ─────────────────────────────────────────────
+const STOP = new Set(['i','u','od','do','na','za','s','se','je','mm','cm','sa','iz']);
+function tokenize(s){return new Set(norm(s).split(' ').filter(t=>t.length>1&&!STOP.has(t)));}
+function jaccard(a,b){const u=new Set([...a,...b]);if(!u.size)return 0;return [...a].filter(x=>b.has(x)).length/u.size;}
+
+// ─── LEVENSHTEIN ───────────────────────────────────────────────────
+function lev(a,b){
+  const dp=[];
+  for(let i=0;i<=a.length;i++){dp[i]=[i];for(let j=1;j<=b.length;j++)dp[i][j]=i===0?j:0;}
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+function levSim(a,b){const mx=Math.max(a.length,b.length);return mx?1-lev(a,b)/mx:1;}
+
+// ─── MAIN MATCH ENGINE ─────────────────────────────────────────────
+function match(query, topN=5) {
+  const qNorm = norm(query);
+  const qTok  = tokenize(query);
+  const qDim  = extractDims(query);
+
+  return CJENIK
+    .map(item => {
+      const iNorm = norm(item.naziv);
+      const iTok  = tokenize(item.naziv);
+      const iDim  = extractDims(item.naziv);
+
+      const jScore = jaccard(qTok, iTok);
+      const lScore = levSim(qNorm.slice(0,60), iNorm.slice(0,60));
+      const dScore = dimScore(qDim, iDim);
+
+      // Fuzzy: check if query words appear in item name
+      const qWords = [...qTok].filter(w=>w.length>2);
+      const fuzzy  = qWords.length ? qWords.filter(w=>iNorm.includes(w)).length/qWords.length : 0;
+
+      const raw = fuzzy*0.35 + jScore*0.30 + lScore*0.15 + dScore*0.20;
+
+      // Dimension penalty: if query has dims and item has dims that don't match → penalize
+      let mul = 1.0;
+      if(qDim.length && iDim.length && dScore===0) mul=0.6;
+      if(qDim.length && iDim.length && dScore===1) mul=1.2;
+
+      return {...item, confidence:Math.min(100,Math.round(raw*mul*100))};
+    })
+    .filter(x=>x.confidence>=20)
+    .sort((a,b)=>b.confidence-a.confidence)
+    .slice(0,topN);
+}
+
+// ─── STATE ─────────────────────────────────────────────────────────
+let queue = [];      // {id, code, name, status:'pending'|'done'|'skip', match, allMatches, selectedIdx}
+let currentIdx = -1;
+let altsOpen = false;
+
+function generateId(){return 'ST'+Date.now().toString(36).toUpperCase();}
+
+function addItem(){
+  const input = document.getElementById('newItemInput');
+  const val = input.value.trim();
+  if(!val) return;
+
+  const matches = match(val, 8);
+  const item = {
+    id: generateId(),
+    code: 'ST-' + (queue.length+1).toString().padStart(3,'0'),
+    name: val,
+    status: 'pending',
+    allMatches: matches,
+    selectedIdx: 0
+  };
+  queue.push(item);
+  input.value = '';
+
+  renderQueue();
+  setActive(queue.length-1);
+  updateStats();
+  showToast('Stavka dodana — ' + matches.length + ' prijedloga pronađeno');
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('reconcileView').style.display='block';
+}
+
+function setActive(idx){
+  currentIdx = idx;
+  altsOpen = false;
+  renderQueue();
+  renderMatch();
+  renderProgress();
+}
+
+// ─── RENDER QUEUE ──────────────────────────────────────────────────
+function renderQueue(){
+  const el = document.getElementById('queueList');
+  document.getElementById('queueCount').textContent = '('+queue.length+')';
+  if(!queue.length){el.innerHTML='<div class="queue-empty">Dodajte stavke iz troškovnika radi usporedbe s cjenikom.</div>';return;}
+  el.innerHTML = queue.map((item,i)=>{
+    const best = item.allMatches[item.selectedIdx||0];
+    const conf = best?best.confidence:0;
+    const statusLabel = item.status==='done'?'Prihvaćeno':item.status==='skip'?'Preskočeno':'Na čekanju';
+    return `<div class="queue-item ${i===currentIdx?'active':''} ${item.status==='done'||item.status==='skip'?'done':''}" onclick="setActive(${i})">
+      <div class="qi-code">${item.code}</div>
+      <div class="qi-name">${item.name.length>60?item.name.slice(0,60)+'…':item.name}</div>
+      <div class="qi-meta">
+        <span class="qi-status ${item.status}">${statusLabel}</span>
+        ${best?`<span class="qi-conf">${conf}% sigurnost</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER MATCH ──────────────────────────────────────────────────
+function confColor(c){return c>=75?'#1D9E75':c>=50?'#EF9F27':'#E24B4A';}
+function confLabel(c){return c>=75?'Visoka sigurnost':c>=50?'Srednja sigurnost':'Niska sigurnost';}
+function confBg(c){return c>=75?'var(--green-bg)':c>=50?'var(--amber-bg)':'var(--red-bg)';}
+function scoreClass(c){return c>=75?'style="background:var(--green-bg);color:var(--green-text)"':c>=50?'style="background:var(--amber-bg);color:var(--amber-text)"':'style="background:var(--red-bg);color:var(--red-text)"';}
+
+function renderMatch(){
+  if(currentIdx<0||currentIdx>=queue.length) return;
+  const item = queue[currentIdx];
+
+  // Left panel
+  document.getElementById('rItemCode').textContent = item.code;
+  document.getElementById('rItemName').textContent = item.name;
+
+  // Chips from name
+  const dims = extractDims(item.name);
+  const chips = dims.map(d=>`<span class="chip">${d.v}${d.u}</span>`);
+  document.getElementById('rItemChips').innerHTML = chips.join('');
+
+  // Nav info
+  const done = queue.filter(x=>x.status==='done').length;
+  document.getElementById('navInfo').textContent = `Stavka ${currentIdx+1} od ${queue.length}`;
+
+  const best = item.allMatches[item.selectedIdx||0];
+  const mc = document.getElementById('matchContent');
+
+  if(!best){
+    mc.innerHTML = `<div class="no-match">&#128262; Nema prijedloga iz cjenika za ovu stavku.<br><small>Probajte preformulirati opis.</small></div>`;
+    document.getElementById('acceptedOv').classList.remove('show');
+    return;
+  }
+
+  // Confidence ring SVG
+  const R=30, C=188.5, offset = C - (C * best.confidence/100);
+  const col = confColor(best.confidence);
+
+  // Generate diff tags
+  const qWords = [...tokenize(item.name)].filter(w=>w.length>3);
+  const mWords = tokenize(best.naziv);
+  const common = qWords.filter(w=>mWords.has(w));
+  const diffTags = [
+    ...common.slice(0,3).map(w=>`<span class="diff-tag tag-ok">&#10003; ${w}</span>`),
+    ...(best.confidence<80?['<span class="diff-tag tag-warn">&#9888; Provjeri opis</span>']:[]),
+    ...(extractDims(item.name).length&&dimScore(extractDims(item.name),extractDims(best.naziv))===1?
+       ['<span class="diff-tag tag-ok">&#10003; Dimenzije se podudaraju</span>']:
+       extractDims(item.name).length?['<span class="diff-tag tag-warn">&#9888; Dimenzije: provjeri</span>']:[])
+  ].join('');
+
+  mc.innerHTML = `
+    <div class="match-top">
+      <div class="conf-ring">
+        <svg width="68" height="68" viewBox="0 0 68 68" style="transform:rotate(-90deg)">
+          <circle cx="34" cy="34" r="${R}" fill="none" stroke-width="6" stroke="#e8e6e0"/>
+          <circle cx="34" cy="34" r="${R}" fill="none" stroke-width="6" stroke="${col}"
+            stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${offset.toFixed(1)}"
+            style="transition:stroke-dashoffset .6s"/>
+        </svg>
+        <div class="conf-pct" style="margin-top:-52px;position:relative;z-index:1">${best.confidence}%</div>
+        <div class="conf-sub" style="margin-top:6px">sigurnost</div>
+      </div>
+      <div class="match-info">
+        <div class="match-name">${best.naziv}</div>
+        <div class="match-price">
+          <span class="price-amt">${best.cijena.toLocaleString('hr',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          <span class="price-unit">€ / ${best.jedinica}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text2)">Sekcija: ${best.sekcija}</div>
+      </div>
+    </div>
+    <div class="conf-bar-wrap">
+      <div class="conf-bar" style="width:${best.confidence}%;background:${col}"></div>
+    </div>
+    <div class="conf-row">
+      <span class="conf-label">Ocjena podudarnosti</span>
+      <span style="font-size:11px;font-weight:600;color:${col}">${confLabel(best.confidence)}</span>
+    </div>
+    <div class="diff-tags">${diffTags}</div>
+    <div class="action-row">
+      <button class="btn accept" onclick="accept()">&#9989; Prihvati prijedlog</button>
+      <button class="btn alt" id="altToggleBtn" onclick="toggleAlts()">
+        &#128270; Odaberi drugu cijenu
+        <span id="altChevron" style="margin-left:auto">&#8964;</span>
+      </button>
+    </div>
+    <div class="alts-panel ${altsOpen?'open':''}" id="altsPanel">
+      <div class="alts-header">Ostali prijedlozi — razvrstano po sigurnosti</div>
+      ${item.allMatches.slice(1).map((a,i)=>`
+        <div class="alt-item" onclick="selectAlt(${i+1})">
+          <div class="alt-score" ${scoreClass(a.confidence)}>${a.confidence}%</div>
+          <div class="alt-info">
+            <div class="alt-name">${a.naziv}</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:2px">${a.sekcija}</div>
+          </div>
+          <div class="alt-price">${a.cijena.toLocaleString('hr',{minimumFractionDigits:2,maximumFractionDigits:2})} €</div>
+        </div>`).join('') || '<div style="padding:8px;font-size:12px;color:var(--text2)">Nema više prijedloga.</div>'}
+    </div>
+  `;
+
+  if(item.status==='done'){
+    document.getElementById('acceptedOv').classList.add('show');
+  } else {
+    document.getElementById('acceptedOv').classList.remove('show');
+  }
+}
+
+function renderProgress(){
+  const done = queue.filter(x=>x.status!=='pending').length;
+  const pct = queue.length?Math.round(done/queue.length*100):0;
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressText').textContent = `${done} / ${queue.length}`;
+}
+
+function updateStats(){
+  const done = queue.filter(x=>x.status==='done').length;
+  const pend = queue.filter(x=>x.status==='pending').length;
+  const confs = queue.filter(x=>x.allMatches.length).map(x=>x.allMatches[x.selectedIdx||0]?.confidence||0);
+  const avg = confs.length?Math.round(confs.reduce((a,b)=>a+b,0)/confs.length):0;
+  document.getElementById('statTotal').textContent = queue.length;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statPend').textContent = pend;
+  document.getElementById('statAvgConf').textContent = avg?avg+'%':'—';
+}
+
+function accept(){
+  if(currentIdx<0) return;
+  queue[currentIdx].status='done';
+  document.getElementById('acceptedOv').classList.add('show');
+  setTimeout(()=>{
+    const next = queue.findIndex((x,i)=>i>currentIdx&&x.status==='pending');
+    if(next>=0) setActive(next);
+    else renderQueue();
+    updateStats();
+    renderProgress();
+  },700);
+}
+
+function skipItem(){
+  if(currentIdx<0) return;
+  queue[currentIdx].status='skip';
+  const next = queue.findIndex((x,i)=>i>currentIdx&&x.status==='pending');
+  if(next>=0) setActive(next);
+  else{renderQueue();updateStats();renderProgress();}
+}
+
+function toggleAlts(){
+  altsOpen=!altsOpen;
+  const panel=document.getElementById('altsPanel');
+  if(panel) panel.classList.toggle('open',altsOpen);
+  const chev=document.getElementById('altChevron');
+  if(chev) chev.style.transform=altsOpen?'rotate(180deg)':'';
+}
+
+function selectAlt(idx){
+  if(currentIdx<0) return;
+  queue[currentIdx].selectedIdx=idx;
+  altsOpen=false;
+  renderMatch();
+  updateStats();
+  showToast('Alternativni prijedlog odabran');
+}
+
+function navigate(dir){
+  const next=currentIdx+dir;
+  if(next>=0&&next<queue.length) setActive(next);
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// Pre-load 3 demo items
+const demos=[
+  'Nabava i polaganje cijevi od tvrdi PVC, promjera 110 mm',
+  'Zidanje opečnim ziđem debljine 25 cm s mortem',
+  'Betoniranje AB ploče, C25/30, d=16 cm'
+];
+setTimeout(()=>{
+  demos.forEach(d=>{
+    document.getElementById('newItemInput').value=d;
+    addItem();
+  });
+  setActive(0);
+},100);
+</script>
+</body>
+</html>'''
